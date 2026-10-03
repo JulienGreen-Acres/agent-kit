@@ -42,3 +42,15 @@ After each follow-up, reschedule from the result:
 | Green first cycle of a new product | J+90 (then stop) |
 | Minor anomalies (unexpected volumes, perf down but not broken) | **J+7** — quick re-check |
 | Hard regression (batch not running, feature unreachable) | stop + flag regression, propose a corrective spec |
+
+## Dead subject — by `feature-followup`, before any replay
+
+A check whose subject is gone is retired, never replayed. Dead means proven: spec or brief
+`Canceled`, bug ticket deleted or closed as not a defect or duplicate, feature removed from the
+product (route 404/410, code path gone from the default branch, flag permanently off), or a
+time-boxed experiment past its end date.
+
+| Subject | Check | Run |
+|---|---|---|
+| Dead, proven | `is_active=false` | `skipped`, the proof in `notes_md` — no failed verdict, ticket or corrective spec |
+| Uncertain | stays active | `skipped`, `final_status="human_required"`, the question in `notes_md` |
