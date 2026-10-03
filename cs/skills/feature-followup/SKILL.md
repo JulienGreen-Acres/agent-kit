@@ -50,11 +50,18 @@ from Castalie, verifies against the running app, reports a verdict, and reschedu
 4. **Act on failure per `on_fail_action`.** `create_spec` → draft a corrective `feature-spec`; `bug_fix` /
    `implement_spec` → note the follow-up work. Record what you decided. **Unattended**, a defect found
    becomes a ticket — `bug_create(author_kind="agent")` — never a code change.
-5. **Reschedule.** Per `${CLAUDE_PLUGIN_ROOT}/instructions/followup-conventions.md`: green + stable →
-   close the loop; green first cycle of a cascade → next horizon; minor anomaly → J+7 re-check; hard
-   regression → stop + flag. Apply via `mcp__castalie__followup_check_update(id, schedule_offset_days=…,
-   chain_offset_days=…, is_active=…)`, and close the run with `followup_run_complete(outcome=…,
-   notes_md=…)`.
+5. **Reschedule or retire.** Per `${CLAUDE_PLUGIN_ROOT}/instructions/followup-conventions.md`:
+   - **Retire** (`is_active=false`) only when the subject is dead (step 0), or when the run is green AND
+     the check has no later horizon (`chain_offset_days` empty) AND its prompt asks for no lasting
+     condition ("stays", "remains", "over time", a recurring drift probe).
+   - **Green with `chain_offset_days`** → reschedule to that next horizon; one green never retires it.
+   - **Failed** → never retire: the check stays active (next horizon or J+7 re-check), and its ticket
+     follows `on_fail_action` (step 4). A hard regression is also flagged.
+   - **Unmeasurable today** (baseline window gone, empty population) → close the run
+     `outcome="skipped", final_status="human_required"`, check left active. Unmeasurable is never green.
+
+   Apply via `mcp__castalie__followup_check_update(id, schedule_offset_days=…, chain_offset_days=…,
+   is_active=…)`, and close the run with `followup_run_complete(outcome=…, notes_md=…)`.
 
 ## Report
 
