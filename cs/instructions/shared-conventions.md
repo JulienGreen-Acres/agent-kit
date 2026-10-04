@@ -63,9 +63,10 @@ whole mechanism: the terminal draws it as a vertical bar, and nothing else has t
 - **Exactly one of the three**, and it is the last block of the turn.
 - **Finished waits for the tracker**: while the work item is still open where it is tracked, the
   verdict is *Waiting*, on whatever closes it. One exception: when all that is left is a production
-  release already requested with this session's identifier on it, and follow-up checks anchored on
-  its pull request (`followup-conventions.md`), the verdict is *Finished*: a failed or unplayed check
-  relaunches the work by itself, so nobody has to keep the tab open for it.
+  release already requested with this session's identifier on it, and a post-deploy check registered
+  for its pull request (`followup-conventions.md`), the verdict is *Finished*: that check is played
+  right after the release, and a failure, or no play within two hours, relaunches the work by itself.
+  Ordinary follow-ups (next day and later) never qualify a turn for this exception.
   `> **Terminé** : mise en production en cours, le travail sera relancé si besoin.`
 - **A gesture only the user can perform**, once everything else is delivered, is a line under
   *Finished*, never an *I need you*; one another session already took on is not asked again.
