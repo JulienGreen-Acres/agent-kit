@@ -7,20 +7,30 @@ Follow-up checks live on the brief (business checks) or the spec (technical chec
 `followup_check_add`; each carries a `scheduleOffsetDays` (first run at delivered_at + N days) and an
 optional `chainOffsetDays` (the next horizon, materialized when the check passes).
 
-## Anchor a check on its pull request
+## Two kinds of checks
 
-A check that names the pull request it verifies (`anchorPrUrl`, and `anchorAlias` when one deployed
-component matters) counts from that pull request's successful production release, recorded by the
-host's release queue as a delivery: due at delivery + `scheduleOffsetDays`, whether its spec, bug or
-brief is closed or not. With no delivery recorded, it keeps its subject's own anchor (the spec's
-completion, the bug's closure), so a workspace that records no deliveries loses nothing.
+**Ordinary follow-ups** — next day, next week, next month, business outcomes. They count from the
+first production delivery of their subject, recorded by the host's release queue: for a spec, the
+first delivery of a pull request of the spec or of one of its phases; for a bug, the delivery that
+names it; for a brief without a follow-up date, the first delivery of one of its specs. With no
+delivery recorded they fall back on the subject's completion. So they never wait for a spec to be
+closed. They are played by the usual passes; a failure stays on the attention screen and follows
+its `onFailAction`. They never reopen a session. Naming the pull request (`anchorPrUrl`) is optional:
+it pins a check to one phase's delivery instead of the subject's first.
 
-Anchor as soon as the pull request exists: `followup_check_add(…, anchorPrUrl)` for a new check,
-`followup_check_update(checkId, anchorPrUrl)` for one written earlier by `feature-spec` or
-`feature-brief`, which run before any pull request. A spec delivered phase by phase anchors each
-phase's checks on that phase's pull request; a check left unanchored waits for the spec's completion.
-A delivery also carries the session that requested the release: an anchored check that fails, or is
-not played, relaunches the work from it.
+**The post-deploy check** — the immediate verification of a change in production, played minutes
+after its release. Register it when you request the release: `followup_check_add(…, postDeploy=true,
+anchorPrUrl=<the pull request>)`. It is due the moment the delivery is recorded, the developer's own
+machine plays it right away, and it is the only check that reopens the shipping session's work: when
+it fails or needs a decision, or is not played within two hours of the delivery. Register one only
+where an immediate production check makes sense; the rest is an ordinary follow-up.
+
+**A phase is not held open for a measurement a follow-up carries.** Close the phase at delivery and
+put the measurement in a check: a spec waiting on its check while its check waits on the spec moves
+neither.
+
+**A check played too early** (its phase not delivered yet) is rescheduled (`followup_run_reschedule`),
+never failed.
 
 ## First horizon — set by `feature-spec`
 
@@ -45,7 +55,8 @@ it needs exists.
   offset for the new category before adding the check.
 - If delivery slipped so the first horizon is already in the past or ≤ J+2, count from **today** — the
   clock starts after go-live, not after the spec was written.
-- Once a phase's pull request exists, anchor that phase's checks on it (section above).
+- When the release is requested, register the post-deploy check if an immediate production check
+  makes sense (section above); a check that targets one phase may name that phase's pull request.
 
 ## Cascade — by `feature-followup`
 

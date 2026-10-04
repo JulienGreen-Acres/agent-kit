@@ -1814,6 +1814,12 @@
           "type": "string",
           "required": false,
           "description": "With anchorPrUrl, the deployed component whose delivery counts (default: the PR's first delivery)."
+        },
+        {
+          "name": "postDeploy",
+          "type": "bool",
+          "required": false,
+          "description": "The immediate production check of a release: requires anchorPrUrl, due at delivery, the only kind that reopens the shipping session's work."
         }
       ],
       "returns": {
@@ -1892,6 +1898,44 @@
           "name": "anchorAlias",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "postDeploy",
+          "type": "bool",
+          "required": false
+        }
+      ],
+      "returns": {
+        "success": "bool"
+      }
+    },
+    {
+      "name": "followup_run_reschedule",
+      "kind": "write",
+      "description": "Hand a follow-up run back with a later due date, without a verdict — for a check played before the change it verifies is in production.",
+      "params": [
+        {
+          "name": "followupRunId",
+          "type": "int",
+          "required": true
+        },
+        {
+          "name": "dueDate",
+          "type": "string",
+          "required": false,
+          "description": "New due date (YYYY-MM-DD) — this or postponeDays, never both."
+        },
+        {
+          "name": "postponeDays",
+          "type": "int",
+          "required": false,
+          "description": "Days from today — this or dueDate, never both."
+        },
+        {
+          "name": "notesMd",
+          "type": "string",
+          "required": false,
+          "description": "Why it is pushed back."
         }
       ],
       "returns": {

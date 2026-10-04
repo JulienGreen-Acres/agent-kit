@@ -199,9 +199,10 @@ Two proofs, both required:
 
 Add a follow-up check with `mcp__castalie__followup_check_add`, or in their system if that is where
 bugs live: what to look at, on what horizon, to know this class of failure has not returned. One
-check, concrete enough to run without you. Once the pull request exists, anchor the check on it
-(`anchorPrUrl`, `${CLAUDE_PLUGIN_ROOT}/instructions/followup-conventions.md`): it then counts from
-the fix's production release instead of the ticket's closure.
+check, concrete enough to run without you; it counts from the fix's production delivery. When the
+fix can be verified in production minutes after its release, register that verification as the
+post-deploy check (`postDeploy`, `${CLAUDE_PLUGIN_ROOT}/instructions/followup-conventions.md`): it
+is the one that reopens the work if it fails.
 
 ### 7. Hand it over
 
