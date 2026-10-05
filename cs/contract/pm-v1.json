@@ -159,25 +159,25 @@
     {
       "name": "workspace_practices_set",
       "kind": "write",
-      "description": "Record the address of the company's shared practices space on GitHub, so every member's Claude finds it with workspace_practices_get. Owner only, the same rule as the workspace settings screen: a member gets forbidden. An address that is not https://github.com/<owner>/<repository> is refused (invalid_url).",
+      "description": "Record the address of the company's shared practices space on GitHub, so every member's Claude finds it with workspace_practices_get. Owner only, the same rule as the workspace settings screen: a member gets owner_only. An address that is not an https address on github.com is refused (not_github_https); the server normalises it to https://github.com/<path>, and an empty string clears the recorded address.",
       "params": [
         {
           "name": "url",
           "type": "string",
           "required": true,
-          "description": "https://github.com/<owner>/<repository>"
+          "description": "https://github.com/<owner>/<repository>; an empty string clears it."
         }
       ],
       "returns": {
         "success": "bool",
-        "url": "string",
+        "url": "string|null",
         "error": "string"
       }
     },
     {
       "name": "member_invite",
       "kind": "write",
-      "description": "Invite a person into this workspace by email address: Castalie sends them the invitation, and they join by signing in with that address. Owner only, the same rule as the invitation screen (/admin/utilisateurs/inviter): a member gets forbidden. An address already a member answers already_member, which is not an error.",
+      "description": "Invite a person into this workspace by email address: Castalie sends them the invitation, and they join by signing in with that address. Owner only, the same rule as the invitation screen (/admin/utilisateurs/inviter): a member gets owner_only. Only the member role is invitable: owner is refused (role_not_invitable). An address already a member answers already_member, which comes back as an error (success false) like email_required, not_delivered and owner_only, but means the person is already in and there is nothing to do.",
       "params": [
         {
           "name": "email",
@@ -190,16 +190,16 @@
           "type": "string",
           "required": false,
           "enum": [
-            "member",
-            "owner"
+            "member"
           ],
-          "description": "member by default."
+          "description": "member, the default and the only invitable role."
         }
       ],
       "returns": {
         "success": "bool",
+        "sent": "bool",
         "email": "string",
-        "status": "invited|already_member",
+        "role": "member",
         "error": "string"
       }
     },
