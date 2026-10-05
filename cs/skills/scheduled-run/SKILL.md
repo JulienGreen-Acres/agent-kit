@@ -79,62 +79,53 @@ notes.
 
 ## 4. Decision
 
-*This section is the only one that changes the day Castalie's unified Decision entity replaces
-arbitrations.*
+A decision is put to a person with `decision_create`, written by
+`${CLAUDE_PLUGIN_ROOT}/instructions/decision-sheet.md`. No other channel: not a ticket, not a comment
+alone, not a question in the run's notes. Castalie notifies the person it is addressed to.
 
-A decision is put to a person through Castalie's decision mechanism, today its arbitrations. No other
-channel: not a ticket, not a comment alone, not a question in the run's notes.
+**The key.** Every decision of this task carries a `dedupe_key` built from what does not change
+between runs: `scheduled-task:<task id>:<what to decide>`, or the subject's own terms when it has
+them — `model-upgrade:<usage>:<candidate>`. The same question asked by the next run produces the
+same key, character for character. `asked_by_agent` is `scheduled-task:<task id>`.
 
-**The key.** Every decision carries a stable title, built from what does not change between runs:
-« <subject>: <what to decide> », for example « Nightly job, invoice-export: retry after a partial
-failure? ». The same question asked by the next run must produce the same title, character for
-character. `asked_by_agent` is `scheduled-task:<task id>`.
+**Look before filing**, every time, on that key:
 
-**Look before depositing**, every time, on that key:
+1. `decision_list(asked_by_agent="scheduled-task:<task id>", status=answered)` — the answers not yet
+   applied. One filed with `resume_mode="asker"`: apply the answer, inside the prompt's frame, then
+   `decision_mark_applied(id, note_md)`. Do not ask again. One filed with `robot_prompt` belongs to
+   the robot that plays resumes (`decision-resume --claim`): leave it.
+2. `decision_list(asked_by_agent="scheduled-task:<task id>", has_open_context_ask=true)` — the
+   readers who asked for more context: `decision_add_context(id, context_md, context_ask_id)` with
+   what they asked, and nothing else.
+3. `decision_list(dedupe_key=<key>, status=all)` — what that question already gave.
+   - **Pending**: do not file a second one (it would be refused with `decision_already_pending`).
+     A fact this run found that the sheet lacks (new figures, a new candidate) is added with
+     `decision_add_context`; a fact that overturns it is a new sheet, `decision_supersede`.
+   - **Answered or applied earlier**: when its answer still applies (« stay », « wait until the
+     vendor's end date ») and nothing it rested on has changed, do not ask again. Ask again only
+     when the facts changed, and say which ones in the summary.
 
-1. `arbitration_answered(asked_by_agent="scheduled-task:<task id>")` — the answers not yet resumed,
-   and the readers who asked for more context.
-   - **Answered**: apply the answer, inside the prompt's frame, then
-     `arbitration_resume(arbitration_request_id)`. Do not ask again.
-   - **A reader asked for context**: `arbitration_add_context(context_ask_id, context_md)` with what
-     they asked, and nothing else.
-2. `arbitration_queue` — the pending ones. Same key already pending: do not deposit a second one. When
-   this run found a fact the request lacks (new figures, a new candidate), add it with
-   `arbitration_amend_context(arbitration_request_id, context_md)`; otherwise leave it as it is.
-3. The previous runs' notes (section 2 reads them) name each decision with its key and its id. A
-   decision settled and resumed earlier is read with `arbitration_check(arbitration_request_id)`: when
-   its answer still applies (« stay », « wait until the vendor's end date ») and nothing it rested on
-   has changed, do not ask again. Ask again only when the facts changed, and say which ones.
-
-**Deposit** with `arbitration_ask` and every field:
+**File** with every field the sheet needs:
 
 | Field | What goes in |
 |---|---|
-| `title` | the key above |
-| `escalation_reason` | `money`, `public_voice`, `shareholder`, `private_knowledge` or `irreversible`; none fits → the decision is yours, take it and write why in the notes |
+| `title` | the question, ending with `?`: « Switch invoice-export to the new model before the old one retires? » |
+| `subject_kind`, `subject_id` | `scheduled_task_run` and this run's id. Refused `subject_kind_unavailable`: the brief or spec the prompt names |
+| `escalation_reason` | `money`, `public_voice`, `shareholder`, `private_knowledge`, `irreversible`, `authorization` or `external_gesture`; none fits → the decision is yours, take it and write why in the notes |
+| `complexity`, `executive_md` | `standard` as a rule; the summary opens on the fact that decides, with the figures |
 | `why_human_md` | one or two sentences on why this person decides |
-| `blocked_md` | the gesture that waits for the answer, in plain words |
+| `answer_shape`, `options` | `choice`, two or three options on different axes, each with `gives_up_md`, its `cost_text` when there is one (on every option when `money`), its `effect`, one `is_recommended` |
+| `recommendation_md` | what you recommend and why |
+| `blocked_md`, `blocked_items` | the gestures that wait for the answer, and how many |
 | `continuing_md` | what this run does meanwhile |
-| `resume_state` | the task id, the run id, the figures, and what to do with each possible answer, so a later run applies it without this session |
-| `answer_shape` | `open` |
-| `options` | two or three, each on a different axis, each with its `title`, its `body`, what it `favours`, what it `givesUp`, and its cost in figures when there is one |
-| `asked_by_agent` | `scheduled-task:<task id>` |
-| `feature_brief_id` or `feature_spec_id` | the subject the prompt names |
-| `context_md` | the useful context, one minute of reading at most |
-| `blocked_items` | how many separate gestures wait |
-
-**Tell the person.** The queue has no addressee; a mention is today the only way to reach someone.
-The responsible person is the one the prompt names (resolve an address with `user_lookup(email)`);
-when it names nobody, the task's last editor (`updated_by_user_id`, else `created_by_user_id`, from
-`scheduled_task_get`), who is a workspace owner since only an owner writes a task. Post **one**
-message per run on the prompt's subject, listing every decision this run deposited or updated:
-`discussion_post(entity_type, entity_id, body_md, mentioned_user_ids=[<responsible>],
-author_kind="agent")`. A prompt that names no subject gets no message: the decision stays in the
-queue, and the notes say nobody was mentioned.
+| `addressee_user_id` | the responsible person: the one the prompt names (resolve an address with `user_lookup(email)`), else the task's last editor (`updated_by_user_id`, else `created_by_user_id`, from `scheduled_task_get`) |
+| `resume_mode`, `resume_prompt_md` | `robot_prompt`, with a prompt a robot plays alone: the task id, this run's id, the figures, and what to do with each answer. Refused `resume_mode_unavailable` (no robot resumes on this workspace): `asker`, the same content in `resume_state_md`, and the next run of this task applies it (step 1) |
+| `dedupe_key`, `asked_by_agent` | the key above, `scheduled-task:<task id>` |
+| `author_kind` | `agent` (section 6) |
 
 **Close** the run with `final_status="human_required"` and `outcome="skipped"` — or `failed` when
-something else this run touched also stays broken. `outcome_type="arbitration"` and
-`outcome_ref_id` the first decision's id.
+something else this run touched also stays broken. `outcome_type="decision"` and `outcome_ref_id`
+the first decision's id.
 
 ## 5. Tickets
 
@@ -154,7 +145,7 @@ A ticket is the team's work, and the robot's name on a wrong one costs a colleag
 
 ## 6. The robot's signature
 
-Every write that takes it carries `author_kind="agent"`: `discussion_post`, `bug_create`, and any verb
+Every write that takes it carries `author_kind="agent"`: `discussion_post`, `bug_create`, `decision_create`, and any verb
 of a loaded skill that accepts it. When `cs on-behalf` names a `robot_user_id`, also pass
 `author_user_id=<robot_user_id>`, so the record belongs to the robot and no colleague is told about
 words they never wrote. A refusal `author_user_id_requires_service_token` means the session runs on a
