@@ -300,6 +300,8 @@ export function register(on: On, also: Companion = NO_COMPANION) {
       closePane: pane => $.ui.close(pane),
       listCommands: () => $.command.list(),
       registerCommand: spec => $.command.register(spec),
+      focus: (requestId, key) => $.ui.focus({ requestId, key }),
+      submitPrompt: text => $.prompt.submit({ text }),
     }
 
     await bind(engine, e.cwd).catch(() => undefined)
